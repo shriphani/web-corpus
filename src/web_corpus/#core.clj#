@@ -1,0 +1,6 @@
+(ns web-corpus.core
+  "Use timestamps to detect thread pages"
+  (:use [subotai.timestamps]))
+
+
+
