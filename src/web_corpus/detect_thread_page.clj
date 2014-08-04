@@ -4,4 +4,4 @@
 
 (defn process-page
   [page-src]
-  (timestamps-and-nodes page-src))
+  (timestamps-and-nodes))
