@@ -44,16 +44,9 @@
       indexed-warcs))))
 
 (defn handle-corpus
-  [job-dir]
-  (let [warcs (get-warc-files job-dir)]
-    (doseq [warc warcs]
-      (let [indices (handle-warc-file warc)
-            out-file (str warc ".thread-indices")
-            out-handle (io/writer out-file)]
-        (doseq [index indices]
-          (binding [*out* out-handle]
-            (println index)))))))
-
-(defn -main
-  [& args]
-  (handle-corpus (first args)))
+  [warc out-file]
+  (let [indices (handle-warc-file warc)
+        out-handle (io/writer out-file)]
+    (doseq [index indices]
+      (binding [*out* out-handle]
+        (println index)))))
