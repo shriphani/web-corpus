@@ -5,14 +5,17 @@
             [clojure.tools.cli :refer [parse-opts]]
             [web-corpus.kba-permalinks :as kba-permalinks]
             [web-corpus.mine-next-thread :as mine-next-thread]
-            [web-corpus.next-thread-extractor :as next-thread-extractor])
+            [web-corpus.next-thread-extractor :as next-thread-extractor]
+            [web-corpus.process-kba-links :as process-kba-links])
   (:import [java.io File]))
 
 (def options
   [[nil "--next-thread-seeds F" "A sample"]
    [nil "--next-thread-extractor J" "Extract next thread from job dir j"]
    [nil "--kba-permalinks W" "Run permalinks on warc"]
-   [nil "--out-file F" "Dump results to"]])
+   [nil "--process-kba-links W" "Process indices file"]
+   [nil "--out-file F" "Dump results to"]
+   [nil "--warc-file W" "Warc file"]])
 
 (defn -main
   [& args]
@@ -45,4 +48,9 @@
           (:kba-permalinks options)
           (kba-permalinks/handle-corpus
            (:kba-permalinks options)
-           (:out-file options)))))
+           (:out-file options))
+
+          (:process-kba-links options)
+          (process-kba-links/-main (:process-kba-links options)
+                                   (:out-file options)
+                                   (:warc-file options)))))
