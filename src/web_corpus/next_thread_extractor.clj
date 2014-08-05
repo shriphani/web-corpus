@@ -1,5 +1,6 @@
 (ns web-corpus.next-thread-extractor
   "Next thread in the pivot jobs"
+  (:gen-class)
   (:require [clojure.java.io :as io]
             [subotai.warc.warc :as warc]
             [web-corpus.utils :as utils])
