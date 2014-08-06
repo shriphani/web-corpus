@@ -1,12 +1,14 @@
 (ns web-corpus.main
   "Tie it all together bro"
-  (:require [clojure.java.io :as io]
+  (:require [clj-time.core :as t]
+            [clojure.java.io :as io]
             [clojure.string :as string]
             [clojure.tools.cli :refer [parse-opts]]
             [web-corpus.kba-permalinks :as kba-permalinks]
             [web-corpus.mine-next-thread :as mine-next-thread]
             [web-corpus.next-thread-extractor :as next-thread-extractor]
-            [web-corpus.process-kba-links :as process-kba-links])
+            [web-corpus.process-kba-links :as process-kba-links]
+            [web-corpus.relevant-content-and-samples :as samples])
   (:import [java.io File]))
 
 (def options
@@ -15,7 +17,9 @@
    [nil "--kba-permalinks W" "Run permalinks on warc"]
    [nil "--process-kba-links W" "Process indices file"]
    [nil "--out-file F" "Dump results to"]
-   [nil "--warc-file W" "Warc file"]])
+   [nil "--warc-file W" "Warc file"]
+   [nil "--samples J" "Job dir samples"]
+   [nil "--stats J" "Job dir stats"]])
 
 (defn -main
   [& args]
@@ -53,4 +57,13 @@
           (:process-kba-links options)
           (process-kba-links/-main (:process-kba-links options)
                                    (:out-file options)
-                                   (:warc-file options)))))
+                                   (:warc-file options))
+
+          (:samples options)
+          (samples/generate-sample (:samples options))
+
+          (:stats options)
+          (spit (:out-file options)
+                (str t/now ","
+                     (samples/stats (:stats options))
+                     ",")))))
