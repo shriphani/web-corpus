@@ -8,7 +8,8 @@
             [web-corpus.mine-next-thread :as mine-next-thread]
             [web-corpus.next-thread-extractor :as next-thread-extractor]
             [web-corpus.process-kba-links :as process-kba-links]
-            [web-corpus.relevant-content-and-samples :as samples])
+            [web-corpus.relevant-content-and-samples :as samples]
+            [web-corpus.common-crawl-corpus :as common-crawl-corpus])
   (:import [java.io File]))
 
 (def options
@@ -19,7 +20,8 @@
    [nil "--out-file F" "Dump results to"]
    [nil "--warc-file W" "Warc file"]
    [nil "--samples J" "Job dir samples"]
-   [nil "--stats J" "Job dir stats"]])
+   [nil "--stats J" "Job dir stats"]
+   [nil "--common-crawl-corpus C" "Process the common crawl corpus"]])
 
 (defn -main
   [& args]
@@ -66,4 +68,14 @@
           (spit (:out-file options)
                 (str t/now ","
                      (samples/stats (:stats options))
-                     ",")))))
+                     ","))
+
+          (:common-crawl-corpus options)
+          (let [out-file (string/replace
+                          (:common-crawl-corpus options)
+                          #".corpus$"
+                          ".uris")
+                out-handle (io/writer out-file)]
+            (binding [*out* out-handle]
+              (common-crawl-corpus/process-common-crawl-corpus
+               (:common-crawl-corpus options)))))))

@@ -1,7 +1,9 @@
 (ns web-corpus.relevant-content-and-samples
   "Sample generation codebase"
-  (:require [clojure.java.io :as io]
+  (:require [clj-time.core :as t]
+            [clojure.java.io :as io]
             [clojure.string :as string]
+            [subotai.timestamps :as ts]
             [subotai.warc.warc :as warc]
             [web-corpus.utils :as utils]))
 
@@ -16,6 +18,17 @@
         (.getAbsolutePath f))))
     (file-seq
      (io/as-file job-dir)))))
+
+(defn get-warcs
+  [job-dir]
+  (filter
+   (fn [f]
+     (and
+      (re-find
+       #".*.warc.gz"
+       (.getAbsolutePath f))))
+   (file-seq
+    (io/as-file job-dir))))
 
 (defn get-crawl-logs
   [job-dir]
@@ -85,3 +98,50 @@
              new-acc)))
      0
      crawl-logs)))
+
+(defn in-clueweb12pp-range?
+  [d]
+  (t/within?
+   (t/interval (t/date-time 2012 2)
+               (t/date-time 2012 5))
+   d))
+
+(defn warc-clueweb-time-stats
+  [stream]
+  (let [records 
+        (filter
+         (fn [r]
+           (and (= (:warc-type r)
+                   "response")
+                (< 1000
+                   (-> r
+                       :content-length
+                       Integer/parseInt))))
+         (warc/stream-warc-records-seq stream))
+
+        to-return 
+        (reduce
+         (fn [acc r]
+           (let [doc-dates (-> r :payload ts/document-detected-timestamps)]
+             (if (some (fn [d] (in-clueweb12pp-range? d))
+                       doc-dates)
+               (inc acc)
+               acc)))
+         0
+         records)]
+    to-return))
+
+(defn clueweb-time-stats
+  "Generate a sample of documents
+   that are in the Clueweb12++ time range"
+  [job-dir]
+  (let [warcs (get-warcs job-dir)]
+    (reduce
+     (fn [acc w]
+       (let [stream (warc/warc-input-stream w)
+             to-return 
+             (+ acc (warc-clueweb-time-stats stream))]
+         (.close stream)
+         to-return))
+     0
+     warcs)))
