@@ -132,7 +132,7 @@
     to-return))
 
 (defn clueweb-time-stats
-  "Generate a sample of documents
+  "How many documents
    that are in the Clueweb12++ time range"
   [job-dir]
   (let [warcs (get-warcs job-dir)]

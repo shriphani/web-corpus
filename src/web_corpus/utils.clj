@@ -72,7 +72,6 @@
                      ]
                     current-path)))))
 
-
 (defn random-take
   ([n coll]
      (random-take n coll []))

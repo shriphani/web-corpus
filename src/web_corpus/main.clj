@@ -1,15 +1,20 @@
 (ns web-corpus.main
   "Tie it all together bro"
   (:require [clj-time.core :as t]
+            [clj-time.coerce :as c]
             [clojure.java.io :as io]
             [clojure.string :as string]
             [clojure.tools.cli :refer [parse-opts]]
             [web-corpus.kba-permalinks :as kba-permalinks]
             [web-corpus.mine-next-thread :as mine-next-thread]
+            [web-corpus.mine-next-thread-indices :as mine-next-thread-indices]
             [web-corpus.next-thread-extractor :as next-thread-extractor]
             [web-corpus.process-kba-links :as process-kba-links]
             [web-corpus.relevant-content-and-samples :as samples]
-            [web-corpus.common-crawl-corpus :as common-crawl-corpus])
+            [web-corpus.common-crawl-corpus :as common-crawl-corpus]
+            [web-corpus.sampling :as sampling])
+  (:use [clojure.pprint :only [pprint]]
+        [incanter core stats charts io])
   (:import [java.io File]))
 
 (def options
@@ -21,7 +26,10 @@
    [nil "--warc-file W" "Warc file"]
    [nil "--samples J" "Job dir samples"]
    [nil "--stats J" "Job dir stats"]
-   [nil "--common-crawl-corpus C" "Process the common crawl corpus"]])
+   [nil "--time-stats J" "Job dir clueweb related stats"]
+   [nil "--common-crawl-corpus C" "Process the common crawl corpus"]
+   [nil "--ignore-hosts F" "Generate a list of processed hosts"]
+   [nil "--next-thread-seeds-2 F" "Supply a warc file, expect indices to be built bro"]])
 
 (defn -main
   [& args]
@@ -65,11 +73,35 @@
           (samples/generate-sample (:samples options))
 
           (:stats options)
-          (spit (:out-file options)
-                (str t/now ","
-                     (samples/stats (:stats options))
-                     ","))
-
+          (do (spit (:out-file options)
+                 (str (c/to-long
+                       (t/now))
+                      ","
+                      (samples/stats (:stats options))
+                      ","))
+              (let [data (read-dataset (:out-file options))
+                    dates (sel data :cols 0)
+                    cnt (sel data :cols 1)]
+                (save (time-series-plot dates cnt :y-label "Downloaded")
+                      (string/replace (:out-file options)
+                                      #".csv$"
+                                      ".png"))))
+          
+          (:time-stats options)
+          (do (spit (:out-file options)
+                 (str (c/to-long
+                       (t/now))
+                      ","
+                      (samples/clueweb-time-stats (:time-stats options))
+                      ","))
+              (let [data (read-dataset (:out-file options))
+                    dates (sel data :cols 0)
+                    cnt (sel data :cols 1)]
+                (save (time-series-plot dates cnt :y-label "In Clueweb range")
+                      (string/replace (:out-file options)
+                                      #".csv$"
+                                      ".png"))))
+          
           (:common-crawl-corpus options)
           (let [out-file (string/replace
                           (:common-crawl-corpus options)
@@ -78,4 +110,15 @@
                 out-handle (io/writer out-file)]
             (binding [*out* out-handle]
               (common-crawl-corpus/process-common-crawl-corpus
-               (:common-crawl-corpus options)))))))
+               (:common-crawl-corpus options))))
+
+          (:ignore-hosts options)
+          (let [seeds-file (:ignore-hosts options)]
+            (sampling/build-handled-seeds seeds-file))
+
+          (:next-thread-seeds-2 options)
+          (let [out-file (str (:next-thread-seeds-2 options) ".next-thread-seeds")
+                out-wrtr (io/writer out-file :append true)]
+            (binding [*out* out-wrtr]
+              (mine-next-thread-indices/handle-warc-file
+               (:next-thread-seeds-2 options)))))))
